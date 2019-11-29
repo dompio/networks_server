@@ -24,7 +24,7 @@ class Client:
             client.message(msg)
 
     def message(self, message: str):
-        self.writebuffer += message.encode()
+        self.messagebuffer += message.encode()
 
 
 class Server:
@@ -55,5 +55,5 @@ class Server:
 
     def run(self):
         # get and handle connections
-        # every n miliseconds for each client send its writebuffer (if not empty)
+        # every n miliseconds for each client send its messagebuffer (if not empty)
         pass
