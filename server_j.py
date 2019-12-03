@@ -1,6 +1,8 @@
 import socket
 import select
 
+CRLF = '\r\n'
+
 class Server:
 
     # example client creation: clients[conn] = Client(self, conn)
