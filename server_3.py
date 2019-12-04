@@ -86,7 +86,22 @@ class Client:
         self.realname = None
         (self.host, self.port) = socket.getpeername()
         self.channels = {}
-        self.sendmsg = ''
+        self._sendmsg = ''
+
+    @property
+    def sendmsg(self):
+        return self._sendmsg
+    
+    @sendmsg.setter
+    def sendmsg(self, val):
+        if val != '':
+            self._sendmsg = val + CLRF
+        else:
+            self._sendmsg = val
+    
+    @sendmsg.deleter
+    def sendmsg(self):
+        del self._sendmsg
 
     def get_prefix(self):
         return '%s!%s@%s' % (self.nickname, self.user, self.host)
@@ -130,8 +145,8 @@ class Client:
             return False
 
     def msg_code_nick(self, code: str, message: str):
-        message = '%s %s :%s' % (
-             code, self.nickname, message)
+        message = ':%s %s %s :%s' % (
+            self.server.name, code, self.nickname, message)
         print(message)
         self.sendmsg += (message)
 
@@ -159,8 +174,11 @@ class Client:
                 self.server.nicknames.pop(self.nickname)
                 self.sendmsg += (
                     (':%s NICK %s' % (self.get_prefix(), nickname)))
-        self.server.nicknames[nickname] = self
-        self.nickname = nickname
+                self.server.nicknames[nickname] = self
+                self.nickname = nickname
+        else:
+            self.server.nicknames[nickname] = self
+            self.nickname = nickname
 
     #   Parameters: <username> <hostname> <servername> <realname>
     def handleUSER(self, params: list):
