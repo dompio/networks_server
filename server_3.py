@@ -91,14 +91,14 @@ class Client:
     @property
     def sendmsg(self):
         return self._sendmsg
-    
+
     @sendmsg.setter
     def sendmsg(self, val):
         if val != '':
             self._sendmsg = val + CLRF
         else:
             self._sendmsg = val
-    
+
     @sendmsg.deleter
     def sendmsg(self):
         del self._sendmsg
@@ -169,16 +169,13 @@ class Client:
             if self.server.nicknames[nickname] is not self:
                 print('Nick collision & not self')
                 return
-            else:
+        elif self.nickname and self.nickname != nickname:
                 # Changed nickname
-                self.server.nicknames.pop(self.nickname)
-                self.sendmsg += (
-                    (':%s NICK %s' % (self.get_prefix(), nickname)))
-                self.server.nicknames[nickname] = self
-                self.nickname = nickname
-        else:
-            self.server.nicknames[nickname] = self
-            self.nickname = nickname
+            self.server.nicknames.pop(self.nickname)
+            self.sendmsg += (
+                (':%s NICK %s' % (self.get_prefix(), nickname)))
+        self.server.nicknames[nickname] = self
+        self.nickname = nickname
 
     #   Parameters: <username> <hostname> <servername> <realname>
     def handleUSER(self, params: list):
@@ -211,10 +208,6 @@ class Client:
                 self.sendmsg = ''
             except socket.error as e:
                 print(e)
-
-
-# :samuo1!~samuo@92.238.3.145 NICK :samuo2
-# nick!user@userhost
 
 
 srv = Server()
