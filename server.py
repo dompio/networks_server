@@ -87,6 +87,7 @@ class Client:
         (self.host, self.port) = socket.getpeername()
         self.channels = set()
         self._sendmsg = ''
+        self.greeted = False
 
     @property
     def sendmsg(self):
@@ -146,7 +147,7 @@ class Client:
                     self.handlePRIVMSG(params)
                 elif cmd == 'PART':
                     self.handlePART(params)
-                print(prefix, cmd, params)
+                # print(prefix, cmd, params)
 
             return True
 
@@ -155,9 +156,12 @@ class Client:
             return False
 
     def msg_code_nick(self, code: str, message: str):
-        message = ':%s %s %s :%s' % (
-            self.server.name, code, self.nickname, message)
-        print(message)
+        if self.nickname == None:
+            nick = '*'
+        else:
+            nick = self.nickname
+        message = ':%s %s %s %s' % (
+            self.server.name, code, nick, message)
         self.sendmsg += (message)
 
     def errNeedMoreParams(self, cmd: str):
@@ -166,11 +170,14 @@ class Client:
 
     #   Parameters: <nickname> [ <hopcount> ]
     def handleNICK(self, params: list):
+        if len(params) == 0:
+            self.msg_code_nick('431', ':No nickname given')
         nickname = params[0]
         # if nickname already exists for some other user
         if nickname in self.server.nicknames:
             if self.server.nicknames[nickname] is not self:
-                print('Nick collision & not self')
+                self.msg_code_nick(
+                    '433', '%s :Nickname is already in use' % nickname)
                 return
         elif self.nickname and self.nickname != nickname:
                 # Changed nickname
@@ -179,6 +186,8 @@ class Client:
                 (':%s NICK %s' % (self.get_prefix(), nickname)))
         self.server.nicknames[nickname] = self
         self.nickname = nickname
+        if not self.greeted:
+            self.greet()
 
     #   Parameters: <username> <hostname> <servername> <realname>
     def handleUSER(self, params: list):
@@ -186,10 +195,15 @@ class Client:
             # ERR_NEEDMOREPARAMS
             self.errNeedMoreParams('USER')
             return
+        elif self.user and self.realname:
+            self.msg_code_nick(
+                '462', ':Unauthorized command (already registered)')
+            return
         # New user; send greeting
         self.user = params[0]
         self.realname = params[3]
-        self.greet()
+        if self.user and self.nickname:
+            self.greet()
 
     def handleQUIT(self, params):
         self.server.nicknames.pop(self.nickname)
@@ -226,11 +240,11 @@ class Client:
     def handlePRIVMSG(self, params):
         if len(params) == 0:
             # ERR_NORECIPIENT
-            self.msg_code_nick('411', 'No recipient given (PRIVMSG)')
+            self.msg_code_nick('411', ':No recipient given (PRIVMSG)')
             return
         if len(params) == 1:
             # ERR_NOTEXTTOSEND
-            self.msg_code_nick('412', 'No text to send')
+            self.msg_code_nick('412', ':No text to send')
             return
         if len(params) != 2:
             return
@@ -255,27 +269,30 @@ class Client:
                 self.msg_code_nick('403', '%s :No such channel' % c)
                 return
             if c not in self.channels:
-                self.msg_code_nick('442', '%s :You\'re not on that channel' % c)
+                self.msg_code_nick(
+                    '442', '%s :You\'re not on that channel' % c)
                 return
+            self.msg_channel(
+                self.server.channels[c], message, cmd='PART', andSelf=True)
             self.channels.remove(c)
             self.server.channels[c].members.remove(self)
             if len(self.server.channels[c].members) == 0:
                 self.server.channels.pop(c)
 
-
-    def msg_channel(self, channel: Channel, msg: str, cmd='PRIVMSG'):
+    def msg_channel(self, channel: Channel, msg: str, cmd='PRIVMSG', andSelf=False):
         for member in channel.members:
-            if member != self:
+            if member != self or andSelf:
                 member.sendmsg += ':%s %s %s :%s' % (
                     self.get_prefix(), cmd, channel.name, msg)
 
     def greet(self):
         self.msg_code_nick(
-            '001', 'Welcome to the Internet Relay Network %s' % self.get_prefix())
-        self.msg_code_nick('002', 'Your host is %s, running version %s' % (
+            '001', ':Welcome to the Internet Relay Network %s' % self.get_prefix())
+        self.msg_code_nick('002', ':Your host is %s, running version %s' % (
             self.server.name, VERSION))
-        self.msg_code_nick('003', 'This server was created %s' % CREATED_AT)
-        self.msg_code_nick('004', '%s %s 0 0' % (self.server.name, VERSION))
+        self.msg_code_nick('003', ':This server was created %s' % CREATED_AT)
+        self.msg_code_nick('004', ':%s %s 0 0' % (self.server.name, VERSION))
+        self.greeted = True
 
     def send(self):
         if self.sendmsg:
