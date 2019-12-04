@@ -192,6 +192,9 @@ class Client:
     def handleQUIT(self, params):
         self.server.nicknames.pop(self.nickname)
         self.server.clients.pop(self.socket)
+    
+    def handlePING(self, params):
+        self.sendmsg += ':%s PONG %s :%s' % (self.server.name, self.server.name, params[0])
 
     def greet(self):
         self.msg_code_nick(
