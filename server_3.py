@@ -130,8 +130,8 @@ class Client:
             return False
 
     def msg_code_nick(self, code: str, message: str):
-        message = ':%s %s %s :%s' % (
-            self.server.name, code, self.nickname, message)
+        message = '%s %s :%s' % (
+             code, self.nickname, message)
         print(message)
         self.sendmsg += (message)
 
