@@ -85,7 +85,7 @@ class Client:
         self.user = None
         self.realname = None
         (self.host, self.port) = socket.getpeername()
-        self.channels = {}
+        self.channels = set()
         self._sendmsg = ''
 
     @property
@@ -111,6 +111,8 @@ class Client:
         command = ''
         params = []
 
+        if len(msg.split(' ')) == 1:
+            return '', msg, []
         if msg[0] == ':':
             prefix, msg = msg[1:].split(' ', 1)
         command, msg = msg.split(' ', 1)
@@ -136,6 +138,14 @@ class Client:
                     self.handleUSER(params)
                 elif cmd == 'QUIT':
                     self.handleQUIT(params)
+                elif cmd == 'PING':
+                    self.handlePING(params)
+                elif cmd == 'JOIN':
+                    self.handleJOIN(params)
+                elif cmd == 'PRIVMSG':
+                    self.handlePRIVMSG(params)
+                elif cmd == 'PART':
+                    self.handlePART(params)
                 print(prefix, cmd, params)
 
             return True
@@ -150,16 +160,9 @@ class Client:
         print(message)
         self.sendmsg += (message)
 
-    def reply(self, msg, notSelf=False):
-        text = ':%s %s' % (self.server.name, msg)
-        if len(self.channels) > 0:
-            for c in self.channels:
-                for m in self.server.channels[c].members:
-                    if notSelf and m is self:
-                        continue
-                    m.socket.send(text)
-        else:
-            self.sendmsg += (text)
+    def errNeedMoreParams(self, cmd: str):
+        self.sendmsg += ':%s %s :Not enough parameters' % (
+            self.server.name, cmd)
 
     #   Parameters: <nickname> [ <hopcount> ]
     def handleNICK(self, params: list):
@@ -181,8 +184,7 @@ class Client:
     def handleUSER(self, params: list):
         if len(params) < 4:
             # ERR_NEEDMOREPARAMS
-            self.sendmsg += (
-                (':%s 461 USER :Not enough parameters' % self.server.name))
+            self.errNeedMoreParams('USER')
             return
         # New user; send greeting
         self.user = params[0]
@@ -192,9 +194,80 @@ class Client:
     def handleQUIT(self, params):
         self.server.nicknames.pop(self.nickname)
         self.server.clients.pop(self.socket)
-    
+        self.socket.close()
+
     def handlePING(self, params):
-        self.sendmsg += ':%s PONG %s :%s' % (self.server.name, self.server.name, params[0])
+        self.sendmsg += ':%s PONG %s :%s' % (self.server.name,
+                                             self.server.name, params[0])
+
+    def handleJOIN(self, params):
+        if len(params) == 0:
+            self.errNeedMoreParams('JOIN')
+            return
+        if len(params) == 2:
+            keys = params[1].split(',')
+        channels = params[0].split(',')
+        # password handling not needed here
+        for c in channels:
+            if c[0].isalnum():
+                self.msg_code_nick('476', '%s :Bad Channel Mask' % c)
+                return
+            if c not in self.channels:
+                if c in self.server.channels:
+                    self.server.channels[c].members.add(self)
+                else:
+                    # create channel
+                    chn = Channel(self.server, c)
+                    chn.members.add(self)
+                    self.server.channels[c] = chn
+                self.channels.add(c)
+                self.sendmsg += ':%s JOIN %s' % (self.get_prefix(), c)
+
+    def handlePRIVMSG(self, params):
+        if len(params) == 0:
+            # ERR_NORECIPIENT
+            self.msg_code_nick('411', 'No recipient given (PRIVMSG)')
+            return
+        if len(params) == 1:
+            # ERR_NOTEXTTOSEND
+            self.msg_code_nick('412', 'No text to send')
+            return
+        if len(params) != 2:
+            return
+
+        target, text = params
+
+        if target in self.channels:
+            self.msg_channel(self.server.channels[target], text)
+        elif target in self.server.nicknames:
+            self.server.nicknames[target].sendmsg += ':%s PRIVMSG %s :%s' % (
+                self.get_prefix(), target, text)
+        else:
+            self.msg_code_nick('401', '%s :No such nick/channel' % target)
+
+    def handlePART(self, params):
+        if len(params) == 0:
+            self.errNeedMoreParams('PART')
+            return
+        channels, message = params
+        for c in channels.split(','):
+            if c not in self.server.channels:
+                self.msg_code_nick('403', '%s :No such channel' % c)
+                return
+            if c not in self.channels:
+                self.msg_code_nick('442', '%s :You\'re not on that channel' % c)
+                return
+            self.channels.remove(c)
+            self.server.channels[c].members.remove(self)
+            if len(self.server.channels[c].members) == 0:
+                self.server.channels.pop(c)
+
+
+    def msg_channel(self, channel: Channel, msg: str, cmd='PRIVMSG'):
+        for member in channel.members:
+            if member != self:
+                member.sendmsg += ':%s %s %s :%s' % (
+                    self.get_prefix(), cmd, channel.name, msg)
 
     def greet(self):
         self.msg_code_nick(
