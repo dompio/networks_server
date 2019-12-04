@@ -133,7 +133,7 @@ class Client:
         message = ':%s %s %s :%s' % (
             self.server.name, code, self.nickname, message)
         print(message)
-        self.sendmsg += (message.encode())
+        self.sendmsg += (message)
 
     def reply(self, msg, notSelf=False):
         text = ':%s %s' % (self.server.name, msg)
@@ -142,9 +142,9 @@ class Client:
                 for m in self.server.channels[c].members:
                     if notSelf and m is self:
                         continue
-                    m.socket.send(text.encode())
+                    m.socket.send(text)
         else:
-            self.sendmsg += (text.encode())
+            self.sendmsg += (text)
 
     #   Parameters: <nickname> [ <hopcount> ]
     def handleNICK(self, params: list):
@@ -158,7 +158,7 @@ class Client:
                 # Changed nickname
                 self.server.nicknames.pop(self.nickname)
                 self.sendmsg += (
-                    (':%s NICK %s' % (self.get_prefix(), nickname)).encode())
+                    (':%s NICK %s' % (self.get_prefix(), nickname)))
         self.server.nicknames[nickname] = self
         self.nickname = nickname
 
@@ -167,7 +167,7 @@ class Client:
         if len(params) < 4:
             # ERR_NEEDMOREPARAMS
             self.sendmsg += (
-                (':%s 461 USER :Not enough parameters' % self.server.name).encode())
+                (':%s 461 USER :Not enough parameters' % self.server.name))
             return
         # New user; send greeting
         self.user = params[0]
@@ -188,7 +188,11 @@ class Client:
 
     def send(self):
         if self.sendmsg:
-            self.socket.send(self.sendmsg.encode())
+            try:
+                self.socket.send(self.sendmsg.encode())
+                self.sendmsg = ''
+            except socket.error as e:
+                print(e)
 
 
 # :samuo1!~samuo@92.238.3.145 NICK :samuo2
