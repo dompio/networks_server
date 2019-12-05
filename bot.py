@@ -49,7 +49,6 @@ def respond():
         print(message)
     
         # Respond to user commands
-        # if message.find("PRIVMSG") != -1:  and then split???
         if message.find('PING :') != -1:
             ping()
     
@@ -68,21 +67,6 @@ def respond():
         elif message == exitcode:
             ircbot.send(bytes("PRIVMSG "+ channel +" :"+ "Exiting..." +"\n", "UTF-8"))
             ircbot.send(bytes("QUIT n", "UTF-8"))
-        
-        elif message.find('PRIVMSG Probot'):
-            #Respond to private messages with fun facts
-            # Define the fun facts
-            random_facts = [
-                "a bolt of lightning contains enough energy to toast 100,000 slices of bread.",
-                "you can hear a blue whale's heartbeat from two miles away.",
-                "nearly 30,000 rubber ducks were lost a sea in 1992 and are still being discovered today."
-                ]
-            
-            # Extract user nickname
-            nick = message[message.find(':')+len(":"):message.rfind('!')]
-            
-            # Reply with a fun fact
-            ircbot.send(bytes("PRIVMSG "+ nick + " Did you know that " + random_facts[random.randint(0,2)] + "\n", "UTF-8"))
     
 
 # Run the bot
