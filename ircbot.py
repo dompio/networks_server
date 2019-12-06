@@ -56,8 +56,8 @@ while 1:
     
     elif (message.find('!day') != -1) and (message.find('PRIVMSG ProBot') == -1):
         today = date.today()
-        # Respond with month day, year
-        this_day = today.strftime("%B %d, %Y")
+        # Respond with day of the week
+        this_day = today.strftime("%A")
         ircbot.send(bytes("PRIVMSG "+ channel +" :"+ "Today is " + this_day +"\n", "UTF-8"))
         
     elif message.find('!time') != -1 and (message.find('PRIVMSG ProBot') == -1):
