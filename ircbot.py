@@ -66,7 +66,8 @@ while 1:
 
     elif message == exitcode:
         ircbot.send(bytes("PRIVMSG "+ channel +" :"+ "Exiting..." +"\n", "UTF-8"))
-        ircbot.send(bytes("QUIT n", "UTF-8"))
+        ircbot.send(bytes("QUIT \n", "UTF-8"))
+        exit(0)
 
     elif message.find('PRIVMSG ProBot') != -1:
         # Respond to private messages with fun facts
