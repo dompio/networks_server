@@ -14,7 +14,7 @@ server_ip = '10.0.42.17'
 port = 6667
 server_address = (server_ip, port)
 channel = "#test"
-exitcode = "exit"
+exitcode = "!exit"
 
 # Create a TCP socket
 ircbot = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -64,7 +64,7 @@ while 1:
         current_time = now.strftime("%H:%M:%S")
         ircbot.send(bytes("PRIVMSG "+ channel +" :"+ "Current time is " + current_time +"\n", "UTF-8"))
 
-    elif message == exitcode:
+    elif message.find(exitcode) != -1:
         ircbot.send(bytes("PRIVMSG "+ channel +" :"+ "Exiting..." +"\n", "UTF-8"))
         ircbot.send(bytes("QUIT \n", "UTF-8"))
         exit(0)
