@@ -5,14 +5,14 @@
 #
 # Group members: Dominika Piosik, Justas Samoulis, Ben Hawke
 
-from datetime import date
+print('test')
 from datetime import datetime
 import socket
 import random
 
 # Variables
 botnick = "ProBot"
-server_ip = 'localhost'
+server_ip = '10.0.42.17'
 port = 6667
 server_address = (server_ip, port)
 channel = "#test"
@@ -23,6 +23,7 @@ ircbot = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # Establish socket connection to the port
 def connect():
+    print('go')
     ircbot.connect(server_address)
 
 # Register the bot
@@ -40,9 +41,13 @@ def ping():
     print('PONG')
     
 # Run the bot
+print('pouet')
 connect()
+print('yop')
 register()
+print('plop')
 join()
+print('bla')
 while 1:
     # Listen for messages
     message = ircbot.recv(2048).decode("UTF-8")
@@ -55,7 +60,7 @@ while 1:
         ping()
     
     elif (message.find('!day') != -1) and (message.find('PRIVMSG ProBot') == -1):
-        today = date.today()
+        today = datetime.today()
         # Respond with day of the week
         this_day = today.strftime("%A")
         ircbot.send(bytes("PRIVMSG "+ channel +" :"+ "Today is " + this_day +"\n", "UTF-8"))
