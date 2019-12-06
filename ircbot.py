@@ -5,7 +5,6 @@
 #
 # Group members: Dominika Piosik, Justas Samoulis, Ben Hawke
 
-print('test')
 from datetime import datetime
 import socket
 import random
@@ -23,7 +22,6 @@ ircbot = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # Establish socket connection to the port
 def connect():
-    print('go')
     ircbot.connect(server_address)
 
 # Register the bot
@@ -38,16 +36,12 @@ def join():
 # Respond to PINGs
 def ping(): 
     ircbot.send(bytes("PONG :pingisn", "UTF-8"))
-    print('PONG')
+    print('PONG'+"\n")
     
 # Run the bot
-print('pouet')
 connect()
-print('yop')
 register()
-print('plop')
 join()
-print('bla')
 while 1:
     # Listen for messages
     message = ircbot.recv(2048).decode("UTF-8")
@@ -88,7 +82,6 @@ while 1:
             
         # Extract user nickname
         nick = message[message.find(':')+len(':'):message.find('!')]
-        print(nick)
             
         # Reply with a fun fact
         ircbot.send(bytes("PRIVMSG "+ nick + " :Did you know that " + random_facts[random.randint(0,4)] + "\n", "UTF-8"))
