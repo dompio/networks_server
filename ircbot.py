@@ -3,7 +3,7 @@
 # Created as part of the AC31008 Networks module at the University of Dundee, November 2019
 #config file
 #
-# Group members: Dominika Piosik, Justas Samoulis, Ben Hawke
+# Group members: Dominika Piosik, Justas Samoulis, Benjamin Morrison
 
 from datetime import datetime
 import socket
