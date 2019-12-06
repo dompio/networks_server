@@ -2,21 +2,15 @@ import socket
 import select
 import sys
 
-# There is no need to implement a full IRC server to understand how sockets works on the server
-# side, thus it should only provide the functionalities of the protocol which are strictly required
-# to achieve the following task:
-# • Allowing clients to connect, choosing there username and realname
-# • Allowing clients to join channels
-# • Allowing clients to talk to others users in a channel
-# • Allowing clients to talk directly to each other in private
 
+# Some constants
 CLRF = '\r\n'
 ADDRESS = '127.0.0.1'
 PORT = 6667
 VERSION = 'MyIrc-1.0'
 CREATED_AT = 'sometime'
 
-
+# Server class responsible for spawning and handling socket connections
 class Server:
 
     def __init__(self):
@@ -40,15 +34,18 @@ class Server:
 
         while True:
             client_sockets = self.clients.keys()
+            # Get sockets which are ready to read/write data
             (ready_read, ready_write, _) = select.select(
                 [self.s, *client_sockets], client_sockets, [], 10)
 
             for sock in ready_read:
                 if sock in self.clients:
+                    # Read data, if unsucessful remove socket from the client list
                     ok = self.clients[sock].read()
                     if not ok:
                         self.clients.pop(sock)
                 else:
+                    # Socket is not in the clients, accept the connection and create a new client
                     (conn, addr) = sock.accept()
 
                     try:
@@ -64,18 +61,20 @@ class Server:
                         except Exception:
                             pass
             for sock in ready_write:
+                # Socket is ready to write, write message if it has one
                 if sock in self.clients:
                     self.clients[sock].send()
 
 
+# Simple Channel class which stores channel name and members
+# Could use dict instead but class allows for easier future extensions
 class Channel:
 
-    def __init__(self, server: Server, name: str):
-        self.server = server
+    def __init__(self, name: str):
         self.name = name
         self.members = set()
 
-
+# Client class responsible for communicating with irc clients using sockets
 class Client:
 
     def __init__(self, server: Server, socket: socket.socket):
@@ -89,6 +88,8 @@ class Client:
         self._sendmsg = ''
         self.greeted = False
 
+    # Property allows to set a getter/setter
+    # Which is helpful since you dont have to manually add CRLF breaks 
     @property
     def sendmsg(self):
         return self._sendmsg
@@ -107,6 +108,7 @@ class Client:
     def get_prefix(self):
         return '%s!%s@%s' % (self.nickname, self.user, self.host)
 
+    # Parses message and returns prefix (empty if none), command and parameters (arguments)
     def parse_msg(self, msg: str):
         prefix = ''
         command = ''
@@ -123,6 +125,7 @@ class Client:
         params = [*msg.split(' '), *params]
         return prefix, command, params
 
+    # Reads data and runs command if we have a handler for it
     def read(self):
         try:
 
@@ -155,6 +158,7 @@ class Client:
             print(e)
             return False
 
+    # Adds a message for socket to send when ready
     def msg_code_nick(self, code: str, message: str):
         if self.nickname == None:
             nick = '*'
@@ -164,11 +168,12 @@ class Client:
             self.server.name, code, nick, message)
         self.sendmsg += (message)
 
+    # Adds an more params error message for socket to send
     def errNeedMoreParams(self, cmd: str):
         self.sendmsg += ':%s %s :Not enough parameters' % (
             self.server.name, cmd)
 
-    #   Parameters: <nickname> [ <hopcount> ]
+    #   params: <nickname> [ <hopcount> ]
     def handleNICK(self, params: list):
         if len(params) == 0:
             self.msg_code_nick('431', ':No nickname given')
@@ -189,7 +194,7 @@ class Client:
         if not self.greeted:
             self.greet()
 
-    #   Parameters: <username> <hostname> <servername> <realname>
+    #   params: <username> <hostname> <servername> <realname>
     def handleUSER(self, params: list):
         if len(params) < 4:
             # ERR_NEEDMOREPARAMS
@@ -205,11 +210,13 @@ class Client:
         if self.user and self.nickname:
             self.greet()
 
+    # Client has left, remove it from our data structures and close socket
     def handleQUIT(self, params):
         self.server.nicknames.pop(self.nickname)
         self.server.clients.pop(self.socket)
         self.socket.close()
 
+    # Respond to PING commands
     def handlePING(self, params):
         self.sendmsg += ':%s PONG %s :%s' % (self.server.name,
                                              self.server.name, params[0])
@@ -231,7 +238,7 @@ class Client:
                     self.server.channels[c].members.add(self)
                 else:
                     # create channel
-                    chn = Channel(self.server, c)
+                    chn = Channel(c)
                     chn.members.add(self)
                     self.server.channels[c] = chn
                 self.channels.add(c)
