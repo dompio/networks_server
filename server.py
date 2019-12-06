@@ -4,7 +4,7 @@ import sys
 
 
 # Some constants
-CLRF = '\r\n'
+CRLF = '\r\n'
 ADDRESS = '127.0.0.1'
 PORT = 6667
 VERSION = 'MyIrc-1.0'
@@ -97,7 +97,7 @@ class Client:
     @sendmsg.setter
     def sendmsg(self, val):
         if val != '':
-            self._sendmsg = val + CLRF
+            self._sendmsg = val + CRLF
         else:
             self._sendmsg = val
 
@@ -129,7 +129,7 @@ class Client:
     def read(self):
         try:
 
-            data = [*self.socket.recv(2 ** 10).decode().split(CLRF)]
+            data = [*self.socket.recv(2 ** 10).decode().split(CRLF)]
 
             for d in data:
                 if d == '':
@@ -221,14 +221,15 @@ class Client:
         self.sendmsg += ':%s PONG %s :%s' % (self.server.name,
                                              self.server.name, params[0])
 
+    # Handle clients request to JOIN a channel
     def handleJOIN(self, params):
         if len(params) == 0:
             self.errNeedMoreParams('JOIN')
             return
         if len(params) == 2:
+            # password handling not needed in this project
             keys = params[1].split(',')
         channels = params[0].split(',')
-        # password handling not needed here
         for c in channels:
             if c[0].isalnum():
                 self.msg_code_nick('476', '%s :Bad Channel Mask' % c)
@@ -244,6 +245,7 @@ class Client:
                 self.channels.add(c)
                 self.sendmsg += ':%s JOIN %s' % (self.get_prefix(), c)
 
+    # Handle clients request to send a message
     def handlePRIVMSG(self, params):
         if len(params) == 0:
             # ERR_NORECIPIENT
@@ -258,6 +260,7 @@ class Client:
 
         target, text = params
 
+        # Send message to a channel/client depending on the target
         if target in self.channels:
             self.msg_channel(self.server.channels[target], text)
         elif target in self.server.nicknames:
@@ -266,6 +269,7 @@ class Client:
         else:
             self.msg_code_nick('401', '%s :No such nick/channel' % target)
 
+    # Handle clients request to leave a channel
     def handlePART(self, params):
         if len(params) == 0:
             self.errNeedMoreParams('PART')
@@ -286,12 +290,14 @@ class Client:
             if len(self.server.channels[c].members) == 0:
                 self.server.channels.pop(c)
 
+    # Message a channel (optionally including the originator of the message)
     def msg_channel(self, channel: Channel, msg: str, cmd='PRIVMSG', andSelf=False):
         for member in channel.members:
             if member != self or andSelf:
                 member.sendmsg += ':%s %s %s :%s' % (
                     self.get_prefix(), cmd, channel.name, msg)
 
+    # Send a greeting message for new users
     def greet(self):
         self.msg_code_nick(
             '001', ':Welcome to the Internet Relay Network %s' % self.get_prefix())
@@ -301,6 +307,7 @@ class Client:
         self.msg_code_nick('004', ':%s %s 0 0' % (self.server.name, VERSION))
         self.greeted = True
 
+    # Send a stored message and clear it afterwards
     def send(self):
         if self.sendmsg:
             try:
