@@ -1,7 +1,6 @@
 # IRC bot - a simple client connecting to a server and replying to messages
 #
 # Created as part of the AC31008 Networks module at the University of Dundee, November 2019
-#config file
 #
 # Group members: Dominika Piosik, Justas Samoulis, Benjamin Morrison
 
